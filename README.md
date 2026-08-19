@@ -1,4 +1,4 @@
-# Stack Buffer Overflow — Shellcode Injection 
+# Stack Buffer Overflow
 
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=flat-square&logo=cplusplus&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows_x86-0078D6?style=flat-square&logo=windows&logoColor=white)
@@ -29,11 +29,7 @@ cout << "Enter your name: ";
 gets(buffer);            // <-- no bounds checking
 ```
 
-The root cause is the use of **`gets()`**, a function so dangerous it was **removed from the C11 standard**. It reads input until a newline with *no way to limit length*, so any input longer than 64 bytes writes past the end of `buffer` and corrupts adjacent stack memory — including the **saved return address** (EIP) that the CPU uses to know where to continue after `main()` finishes.
-
-By controlling that return address, an attacker controls where the program executes next.
-
-See [`docs/VULNERABILITY.md`](docs/VULNERABILITY.md) for the full technical breakdown.
+The root cause is the use of **`gets()`**, a function so dangerous it was **removed from the C11 standard**. It reads input until a newline with *no way to limit length*, so any input longer than 64 bytes writes past the end of `buffer` and corrupts adjacent stack memory including the **saved return address** (EIP) that the CPU uses to know where to continue after `main()` finishes.
 
 ---
 
@@ -54,23 +50,7 @@ The payload written by [`src/exploit.cpp`](src/exploit.cpp) is laid out like thi
 | NOP sled (`0x90`) | 16 bytes | Gives the CPU a safe "runway" to slide into the shellcode |
 | Shellcode | ~118 bytes | Resolves `WinExec` and runs `calc.exe` |
 
-The offset (**76**) and the `JMP ESP` address were both found **manually in Immunity Debugger** — that discovery process is the real learning of the project, and this discovery process was the core learning of the project.
-
----
-
-## 🧪 Reproducing It (Lab Setup)
-
-> These steps require an **x86 Windows environment you control**, with modern protections disabled. This is intentionally *not* how real software should run — the mitigations exist precisely to stop this attack.
-
-1. **Compile the vulnerable program** with an old/permissive toolchain (32-bit).
-2. **Disable protections** for the study (this is why the exploit works at all)
-   - **DEP** (Data Execution Prevention)
-   - **ASLR** (Address Space Layout Randomization)
-   - Stack canaries / `/GS` (compiler stack protection)
-3. **Generate the payload:** compile and run [`src/exploit.cpp`](src/exploit.cpp) to produce `payload.bin`.
-4. **Attach Immunity Debugger** to the vulnerable process and feed it the payload.
-5. Observe execution jump into the shellcode → **Calculator opens**.
-
+The offset (**76**) and the `JMP ESP` address were both found **manually in Immunity Debugger** that discovery process is the real learning of the project, and this discovery process was the core learning of the project.
 
 ---
 
@@ -112,21 +92,6 @@ fgets(buffer, sizeof(buffer), stdin);
 ```
 
 ---
-
-## 🎓 What We Learned
-
-It connected C++ language basics to real security consequences. Highlights:
-
-- How the **call stack** actually works — buffers, saved EBP, and the return address.
-- Why **memory-unsafe functions** like `gets()` are dangerous, and what safe alternatives exist.
-- **Little-endian** byte ordering (why the `JMP ESP` address is written backwards).
-- Reading **assembly and CPU registers** (ESP, EIP) in a live debugger.
-- The purpose of real-world **exploit mitigations** — and a new appreciation for *why* they exist.
-
-Full reflection in [`docs/LEARNINGS.md`](docs/LEARNINGS.md).
-
-
-
 ## 📄 License
 
 Released under the [MIT License](LICENSE) for educational use.
